@@ -1,0 +1,24 @@
+import { UserSchema } from '#database/schema'
+import hash from '@adonisjs/core/services/hash'
+import { compose } from '@adonisjs/core/helpers'
+import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
+import { type AccessToken, DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
+
+// Resolve the hash manager after the application has booted. Passing the
+// imported singleton directly evaluates it too early and leaves auth login
+// without a hash implementation during runtime.
+export default class User extends compose(
+  UserSchema,
+  withAuthFinder(() => hash.use())
+) {
+  static accessTokens = DbAccessTokensProvider.forModel(User)
+  declare currentAccessToken?: AccessToken
+
+  get initials() {
+    const [first, last] = this.fullName ? this.fullName.split(' ') : this.email.split('@')
+    if (first && last) {
+      return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase()
+    }
+    return `${first.slice(0, 2)}`.toUpperCase()
+  }
+}
