@@ -3,6 +3,7 @@ type JsonObject = Record<string, unknown>
 const OPENAPI_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'options', 'head'])
 
 const tagDescriptions: Record<string, string> = {
+  系统: '服务存活、就绪和基础信息。',
   AUTH: '用户注册、登录和访问令牌管理。',
   ACCOUNT: '当前 API 用户信息和访问令牌管理。',
   WEIXIN: '微信账号接入和 iLink 协议操作。',
@@ -75,6 +76,7 @@ function localizeResponses(value: unknown, useStatusDescription: boolean) {
   for (const [key, rawResponse] of Object.entries(responses)) {
     const response = asObject(rawResponse)
     if (!response) continue
+    if ((key === '204' || key === '304') && 'content' in response) delete response.content
     const description = response.description
     if (
       typeof description === 'string' &&
@@ -89,7 +91,7 @@ function localizeResponses(value: unknown, useStatusDescription: boolean) {
 }
 
 /**
- * Converts AutoSwagger's reader-facing generated text to Chinese while
+ * Converts generated reader-facing OpenAPI text to Chinese while
  * leaving paths, schema properties and machine-oriented operation IDs intact.
  */
 export function localizeOpenApiDocument(document: unknown) {

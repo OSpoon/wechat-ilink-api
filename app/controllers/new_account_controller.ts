@@ -2,16 +2,14 @@ import User from '#models/user'
 import { signupValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
 import UserTransformer from '#transformers/user_transformer'
+import { ApiOperation, ApiResponse, ApiSchema } from '@foadonis/openapi/decorators'
+import { AuthResponseDocument, ErrorResponseDocument } from '#openapi/schemas'
 
 export default class NewAccountController {
-  /**
-   * @store
-   * @tag 用户认证
-   * @summary 注册 API 用户
-   * @description 创建 API 用户并返回访问令牌。
-   * @requestBody {"fullName":"Demo Developer","email":"developer@example.com","password":"change-me-123","passwordConfirmation":"change-me-123"}
-   * @responseBody 201 - {"data":{"user":{"id":1,"fullName":"Demo Developer","email":"developer@example.com","createdAt":"2026-09-05T09:55:00.000Z","updatedAt":"2026-09-05T09:55:00.000Z","initials":"DD"},"token":"oat_xxx"}} - API 用户创建成功。
-   */
+  @ApiOperation({ summary: '注册 API 用户', description: '创建 API 用户并返回访问令牌。' })
+  @ApiSchema(signupValidator)
+  @ApiResponse({ status: 200, description: 'API 用户创建成功。', type: AuthResponseDocument })
+  @ApiResponse({ status: 422, description: '注册参数校验失败。', type: ErrorResponseDocument })
   async store({ request, serialize }: HttpContext) {
     const { fullName, email, password } = await request.validateUsing(signupValidator)
 

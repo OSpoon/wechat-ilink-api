@@ -12,15 +12,35 @@ import {
   decodeMessagePayload,
   encodeMessagePayload,
 } from '#services/weixin/message_payload_service'
+import {
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiSchema,
+  ApiSecurity,
+} from '@foadonis/openapi/decorators'
+import {
+  ErrorResponseDocument,
+  MessagesResponseDocument,
+  SentMessageResponseDocument,
+} from '#openapi/schemas'
 
+@ApiSecurity('BearerAuth')
+@ApiResponse({ status: 401, description: '访问令牌缺失或无效。', type: ErrorResponseDocument })
 export default class WeixinMessagesController {
-  /**
-   * @index
-   * @tag 微信消息
-   * @summary 查询消息历史
-   * @description 返回指定微信账号的入站和出站消息，协议敏感字段会自动脱敏。
-   * @responseBody 200 - {"data":[{"id":"wxmsg_xxx","direction":"inbound","from":"user_xxx","to":"wxuser_xxx","status":"received","providerMessageId":"123456","clientMessageId":"client-message-001","payload":{"item_list":[{"type":1,"text_item":{"text":"你好"}}]},"media":[],"receivedAt":"2026-09-05T09:55:00.000Z","sentAt":"","createdAt":"2026-09-05T09:55:00.000Z"}]} - 返回消息历史。
-   */
+  @ApiOperation({
+    summary: '查询消息历史',
+    description: '返回指定微信账号的入站和出站消息，协议敏感字段会自动脱敏。',
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: '返回消息数量，取值范围为 1 至 100。',
+    type: 'integer',
+    required: false,
+    example: 50,
+  })
+  @ApiResponse({ status: 200, description: '返回消息历史。', type: MessagesResponseDocument })
+  @ApiResponse({ status: 404, description: '微信账号不存在。', type: ErrorResponseDocument })
   async index({ auth, params, request, serialize }: HttpContext) {
     const user = auth.getUserOrFail()
     const account = await findAccountOrFail(user.id, params.accountId)
@@ -61,14 +81,23 @@ export default class WeixinMessagesController {
     )
   }
 
-  /**
-   * @store
-   * @tag 微信消息
-   * @summary 发送文本消息
-   * @description 通过指定微信账号向目标用户发送文本消息。
-   * @requestBody {"to":"user_xxx","text":"你好，来自 API 服务","clientMessageId":"client-message-001","runId":"run-001"}
-   * @responseBody 201 - {"data":{"id":"wxmsg_xxx","clientMessageId":"client-message-001","status":"sent","sentAt":"2026-09-05T09:56:00.000Z"}} - 文本消息发送成功。
-   */
+  @ApiOperation({
+    summary: '发送文本消息',
+    description: '通过指定微信账号向目标用户发送文本消息。',
+  })
+  @ApiSchema(sendTextMessageValidator)
+  @ApiResponse({
+    status: 201,
+    description: '文本消息发送成功。',
+    type: SentMessageResponseDocument,
+  })
+  @ApiResponse({ status: 404, description: '微信账号不存在。', type: ErrorResponseDocument })
+  @ApiResponse({
+    status: 409,
+    description: '微信账号需要重新扫码登录。',
+    type: ErrorResponseDocument,
+  })
+  @ApiResponse({ status: 422, description: '文本消息参数校验失败。', type: ErrorResponseDocument })
   async store({ auth, params, request, response, serialize }: HttpContext) {
     const user = auth.getUserOrFail()
     const payload = await request.validateUsing(sendTextMessageValidator)

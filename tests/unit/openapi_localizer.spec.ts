@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { localizeOpenApiDocument } from '#services/openapi_localizer'
 
-test('Swagger localization translates generated descriptions without changing schema keys', ({
+test('OpenAPI localization translates generated descriptions without changing schema keys', ({
   assert,
 }) => {
   const document = {

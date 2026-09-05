@@ -7,6 +7,7 @@ export const controllers = {
   AccessTokens: () => import('#controllers/access_tokens_controller'),
   NewAccount: () => import('#controllers/new_account_controller'),
   Profile: () => import('#controllers/profile_controller'),
+  System: () => import('#controllers/system_controller'),
   weixin: {
     Accounts: () => import('#controllers/weixin/accounts_controller'),
     LoginSessions: () => import('#controllers/weixin/login_sessions_controller'),

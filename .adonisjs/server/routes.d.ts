@@ -4,6 +4,9 @@ type ParamValue = string | number | bigint | boolean
 
 export type ScannedRoutes = {
   ALL: {
+    'system.index': { paramsTuple?: []; params?: {} }
+    'system.live': { paramsTuple?: []; params?: {} }
+    'system.ready': { paramsTuple?: []; params?: {} }
     'auth.new_account.store': { paramsTuple?: []; params?: {} }
     'auth.access_tokens.store': { paramsTuple?: []; params?: {} }
     'profile.profile.show': { paramsTuple?: []; params?: {} }
@@ -27,6 +30,9 @@ export type ScannedRoutes = {
     'weixin_webhooks.destroy': { paramsTuple: [ParamValue]; params: {'webhookId': ParamValue} }
   }
   GET: {
+    'system.index': { paramsTuple?: []; params?: {} }
+    'system.live': { paramsTuple?: []; params?: {} }
+    'system.ready': { paramsTuple?: []; params?: {} }
     'profile.profile.show': { paramsTuple?: []; params?: {} }
     'weixin_accounts.index': { paramsTuple?: []; params?: {} }
     'weixin_accounts.show': { paramsTuple: [ParamValue]; params: {'accountId': ParamValue} }
@@ -37,6 +43,9 @@ export type ScannedRoutes = {
     'weixin_webhooks.deliveries': { paramsTuple: [ParamValue]; params: {'webhookId': ParamValue} }
   }
   HEAD: {
+    'system.index': { paramsTuple?: []; params?: {} }
+    'system.live': { paramsTuple?: []; params?: {} }
+    'system.ready': { paramsTuple?: []; params?: {} }
     'profile.profile.show': { paramsTuple?: []; params?: {} }
     'weixin_accounts.index': { paramsTuple?: []; params?: {} }
     'weixin_accounts.show': { paramsTuple: [ParamValue]; params: {'accountId': ParamValue} }

@@ -6,6 +6,24 @@ import type { ApiDefinition } from './tree.d.ts'
 const placeholder: any = {}
 
 const routes = {
+  'system.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/',
+    tokens: [{"old":"/","type":0,"val":"/","end":""}],
+    types: placeholder as Registry['system.index']['types'],
+  },
+  'system.live': {
+    methods: ["GET","HEAD"],
+    pattern: '/health/live',
+    tokens: [{"old":"/health/live","type":0,"val":"health","end":""},{"old":"/health/live","type":0,"val":"live","end":""}],
+    types: placeholder as Registry['system.live']['types'],
+  },
+  'system.ready': {
+    methods: ["GET","HEAD"],
+    pattern: '/health/ready',
+    tokens: [{"old":"/health/ready","type":0,"val":"health","end":""},{"old":"/health/ready","type":0,"val":"ready","end":""}],
+    types: placeholder as Registry['system.ready']['types'],
+  },
   'auth.new_account.store': {
     methods: ["POST"],
     pattern: '/api/v1/auth/signup',

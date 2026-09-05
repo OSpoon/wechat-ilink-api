@@ -40,6 +40,13 @@ test.group('微信 API response contract', (group) => {
     await rollback?.()
   })
 
+  test('root returns a Chinese welcome message', async ({ assert, client }) => {
+    const response = await client.get('/')
+
+    response.assertStatus(200)
+    assert.deepEqual(response.body(), { message: '欢迎使用微信 iLink API 服务。' })
+  })
+
   test('authenticated profile returns a non-empty serialized data object', async ({
     assert,
     client,
@@ -83,5 +90,26 @@ test.group('微信 API response contract', (group) => {
     assert.equal(body.data.id, loginSessionId)
     assert.equal(body.data.status, 'waiting_scan')
     assert.equal(body.data.qrUrl, 'https://example.test/qr/test-qrcode')
+  })
+
+  test('OpenAPI document returns the generated paths and Chinese descriptions', async ({
+    assert,
+    client,
+  }) => {
+    const response = await client.get('/openapi.json')
+
+    response.assertStatus(200)
+    const body = response.body() as unknown as {
+      openapi: string
+      info: { title: string }
+      paths: Record<string, unknown>
+    }
+    assert.equal(body.openapi, '3.0.0')
+    assert.equal(body.info.title, '微信 iLink API')
+    assert.isAtLeast(Object.keys(body.paths).length, 1)
+    assert.equal(
+      (body.paths['/api/v1/weixin/login-sessions'] as { post: { summary: string } }).post.summary,
+      '创建二维码登录会话'
+    )
   })
 })

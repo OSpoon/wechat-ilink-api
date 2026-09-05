@@ -2,6 +2,11 @@
 import type { routes } from './index.ts'
 
 export interface ApiDefinition {
+  system: {
+    index: typeof routes['system.index']
+    live: typeof routes['system.live']
+    ready: typeof routes['system.ready']
+  }
   auth: {
     newAccount: {
       store: typeof routes['auth.new_account.store']

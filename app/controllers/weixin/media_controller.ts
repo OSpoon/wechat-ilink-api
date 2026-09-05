@@ -10,18 +10,39 @@ import { decryptSecret } from '#services/weixin/secret_service'
 import WeixinConversation from '#models/weixin_conversation'
 import { sendMediaMessageValidator } from '#validators/weixin'
 import { encodeMessagePayload } from '#services/weixin/message_payload_service'
+import { ApiBody, ApiOperation, ApiResponse, ApiSecurity } from '@foadonis/openapi/decorators'
+import {
+  ErrorResponseDocument,
+  MediaUploadRequestDocument,
+  SentMediaResponseDocument,
+} from '#openapi/schemas'
 
 const MAX_MEDIA_SIZE = 20 * 1024 * 1024
 
+@ApiSecurity('BearerAuth')
+@ApiResponse({ status: 401, description: '访问令牌缺失或无效。', type: ErrorResponseDocument })
 export default class WeixinMediaController {
-  /**
-   * @store
-   * @tag 微信消息
-   * @summary 发送图片、视频或文件
-   * @description 加密上传媒体到微信 CDN，然后通过 iLink 发送媒体消息。
-   * @requestFormDataBody {"to":{"type":"string","example":"user_xxx","required":"true"},"mediaType":{"type":"string","enum":["image","video","file"],"required":"true"},"caption":{"type":"string"},"contextToken":{"type":"string"},"clientMessageId":{"type":"string"},"runId":{"type":"string"},"file":{"type":"string","format":"binary","required":"true"}}
-   * @responseBody 201 - {"data":{"id":"wxmsg_xxx","clientMessageId":"client-message-001","mediaType":"file","status":"sent","sentAt":"2026-09-05T09:56:00.000Z"}} - 媒体消息发送成功。
-   */
+  @ApiOperation({
+    summary: '发送图片、视频或文件',
+    description: '加密上传媒体到微信 CDN，然后通过 iLink 发送媒体消息。',
+  })
+  @ApiBody({
+    type: MediaUploadRequestDocument,
+    mediaType: 'multipart/form-data',
+    required: true,
+  })
+  @ApiResponse({ status: 201, description: '媒体消息发送成功。', type: SentMediaResponseDocument })
+  @ApiResponse({ status: 404, description: '微信账号不存在。', type: ErrorResponseDocument })
+  @ApiResponse({
+    status: 409,
+    description: '微信账号需要重新扫码登录。',
+    type: ErrorResponseDocument,
+  })
+  @ApiResponse({
+    status: 422,
+    description: '媒体文件或参数校验失败。',
+    type: ErrorResponseDocument,
+  })
   async store({ auth, params, request, response, serialize }: HttpContext) {
     const user = auth.getUserOrFail()
     const payload = await request.validateUsing(sendMediaMessageValidator)
