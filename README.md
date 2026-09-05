@@ -27,6 +27,7 @@
 - [接收入站消息](#接收入站消息)
 - [状态与错误](#状态与错误)
 - [部署](#部署)
+- [开发规范与发布](#开发规范与发布)
 - [日志与问题排查](#日志与问题排查)
 - [故障排查](#故障排查)
 - [接口总览](#接口总览)
@@ -44,6 +45,7 @@
 ### 本地启动
 
 ```bash
+corepack enable
 cp .env.example .env
 pnpm install
 ```
@@ -731,23 +733,23 @@ APP_KEY 与数据库需要成套备份。只备份数据库而丢失 APP_KEY，�
 
 典型日志字段包括：
 
-| 字段       | 说明                                            |
-| ---------- | ----------------------------------------------- |
-| event      | 固定为 http.request                             |
-| requestId  | 请求关联 ID，同时会通过 X-Request-Id 响应头返回 |
-| method     | HTTP 方法                                       |
-| path       | 请求路径，不包含查询参数                        |
-| route      | 匹配到的路由                                    |
-| statusCode | HTTP 响应状态码                                 |
-| durationMs | 请求处理耗时，单位为毫秒                        |
-| userId     | 已认证 API 用户 ID                              |
-| accountId  | 请求涉及的微信账号 ID（如果有）                 |
-| clientIp   | 客户端 IP                                       |
-| requestHeaders | 请求头，敏感请求头已脱敏                       |
-| requestQuery   | 查询参数，敏感字段已脱敏                       |
-| requestBody    | 解析后的请求体，敏感字段已脱敏                 |
-| responseHeaders | 响应头，Set-Cookie 等敏感响应头已脱敏          |
-| responseBody   | 响应正文，敏感字段已脱敏                       |
+| 字段            | 说明                                            |
+| --------------- | ----------------------------------------------- |
+| event           | 固定为 http.request                             |
+| requestId       | 请求关联 ID，同时会通过 X-Request-Id 响应头返回 |
+| method          | HTTP 方法                                       |
+| path            | 请求路径，不包含查询参数                        |
+| route           | 匹配到的路由                                    |
+| statusCode      | HTTP 响应状态码                                 |
+| durationMs      | 请求处理耗时，单位为毫秒                        |
+| userId          | 已认证 API 用户 ID                              |
+| accountId       | 请求涉及的微信账号 ID（如果有）                 |
+| clientIp        | 客户端 IP                                       |
+| requestHeaders  | 请求头，敏感请求头已脱敏                        |
+| requestQuery    | 查询参数，敏感字段已脱敏                        |
+| requestBody     | 解析后的请求体，敏感字段已脱敏                  |
+| responseHeaders | 响应头，Set-Cookie 等敏感响应头已脱敏           |
+| responseBody    | 响应正文，敏感字段已脱敏                        |
 
 日志会记录完整的结构化请求和响应元数据、查询参数以及 JSON/表单正文。密码、Cookie、Authorization、令牌、secret、签名、二维码地址等敏感字段会自动脱敏；multipart 上传只记录文件名、类型和大小，不记录文件内容。日志级别和正文开关通过 .env 设置：
 
@@ -866,3 +868,73 @@ pnpm build
 ```
 
 真实微信验收建议依次验证：二维码登录、消息入站、使用 from 发送文本、发送图片、下载入站媒体、Webhook 验签，以及账号 stop/start。
+
+## 开发规范与发布
+
+### 提交前检查
+
+安装依赖后，`simple-git-hooks` 会自动配置 Git hooks：
+
+- `pre-commit`：通过 `lint-staged` 对暂存的 JavaScript/TypeScript 文件执行 Prettier 和 ESLint，对配置、文档和 YAML 文件执行 Prettier。
+- `pre-push`：执行 `pnpm check`，检查格式、Lint 和 TypeScript 类型。
+
+常用命令：
+
+```bash
+pnpm format
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm check
+pnpm verify
+```
+
+如果 Git hooks 未自动安装，可以手动执行：
+
+```bash
+corepack enable
+pnpm install
+pnpm exec simple-git-hooks
+```
+
+如果提交时出现 `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`，请先切换到项目约定的 pnpm 版本并重新安装依赖：
+
+```bash
+corepack enable
+corepack prepare pnpm@10.15.1 --activate
+pnpm install --frozen-lockfile
+pnpm exec simple-git-hooks
+```
+
+### 版本升级
+
+使用唯一的 `pnpm release` 命令升级版本。命令会先执行完整校验，再由 `bumpp` 检查工作区状态、更新 `package.json`、创建版本提交和 `v` 前缀 Git tag，并按确认结果将提交和 tag 推送到远程仓库：
+
+```bash
+pnpm release
+```
+
+### GitHub 一次性配置
+
+首次发布前，请在 GitHub 仓库中确认：
+
+- Actions 已启用。
+- Settings → Actions → General → Workflow permissions 设置为允许 `GITHUB_TOKEN` 读写仓库内容；Docker workflow 已声明 `contents: write` 和 `packages: write`。
+- 如果 `main` 分支启用了保护规则，需要允许当前发布账号直接推送，或者按照仓库规则调整发布分支策略；`pnpm release` 需要推送版本提交和 tag。
+- GitHub Container Registry 的镜像可见性符合预期。私有镜像被其他机器拉取时，需要使用具备 `read:packages` 权限的令牌。
+
+不需要额外创建 Docker Hub 或 GitHub Secret；镜像推送和 Release 创建使用 GitHub Actions 自动提供的 `GITHUB_TOKEN`。
+
+版本 tag 推送后，GitHub Actions 会按以下顺序执行：
+
+1. 构建并推送 Docker 镜像到 GitHub Container Registry。
+2. 镜像构建和推送成功后，使用 GitHub 自动生成变更说明创建 Release。
+
+因此，完成一次发布只需要执行 bumpp 命令并确认提交、tag 和推送。镜像地址格式为：
+
+```text
+ghcr.io/<GitHub 用户或组织>/<仓库名>:<版本号>
+ghcr.io/<GitHub 用户或组织>/<仓库名>:latest
+```
+
+例如版本 `v1.2.3` 会生成 `1.2.3`、`1.2`、`1` 和 `latest` 标签，并创建名为 `v1.2.3` 的 GitHub Release。首次使用时，请在 GitHub 仓库的 Actions 设置中允许 workflow 使用 `GITHUB_TOKEN` 创建 Release，并在 Packages 设置中确认镜像包的可见性；私有镜像需要使用具备 `read:packages` 权限的令牌拉取。

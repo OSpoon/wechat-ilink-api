@@ -11,9 +11,9 @@ services:
       PORT: 13333
       APP_URL: http://localhost:13333
       DB_DATABASE: /app/data/db.sqlite3
-      DEFAULT_TEST_ACCOUNT_ENABLED: "false"
+      DEFAULT_TEST_ACCOUNT_ENABLED: 'false'
     ports:
-      - "13333:13333"
+      - '13333:13333'
     volumes:
       # SQLite 数据库持久化到项目目录：./data/db.sqlite3
       - ./data:/app/data

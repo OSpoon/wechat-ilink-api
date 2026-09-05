@@ -1,5 +1,6 @@
 # Dependencies and AdonisJS build
 node_modules
+.pnpm-store
 build
 tmp/*
 !tmp/.gitkeep
