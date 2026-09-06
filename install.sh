@@ -163,7 +163,7 @@ chmod 600 "$ENV_FILE"
 if [[ "$START_SERVICES" == true ]]; then
   echo "拉取 Docker 镜像..."
   if ! (cd "$INSTALL_DIR" && IMAGE_TAG="${VERSION#v}" docker compose pull); then
-    fail "镜像拉取失败，请检查网络、版本和当前 CPU 架构；只有私有仓库才需要额外执行 docker login ghcr.io。"
+    fail "镜像拉取失败，请检查网络、版本和当前 CPU 架构，并确认 Docker 可以访问 ghcr.io 后重试。"
   fi
 
   echo "启动服务..."

@@ -85,4 +85,4 @@ tag 推送后，Docker workflow 会依次完成镜像构建、镜像推送和 Gi
 - 当前发布账号可以向发布分支推送提交和 tag。
 - GHCR 镜像可见性符合预期。
 
-Workflow 已声明 `contents: write` 和 `packages: write`，不需要额外配置 Docker Hub Secret。私有 GHCR 镜像的拉取权限需要由使用方自行提供具备 `read:packages` 权限的令牌。
+Workflow 已声明 `contents: write` 和 `packages: write`，不需要额外配置 Docker Hub Secret。发布到 GHCR 的镜像面向用户公开拉取，不需要额外配置镜像仓库凭据。

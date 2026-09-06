@@ -34,7 +34,7 @@
 curl -fsSL https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/main/install.sh | bash
 ```
 
-脚本会自动选择最新 Release，下载对应的 Compose 配置，创建 `./wechat-ilink-api`，自动生成并保存 `APP_KEY`，然后拉取镜像并启动 API 和管理控制台。默认不需要登录 GHCR；如果你的镜像仓库是私有的，脚本提示后再执行 `docker login ghcr.io` 即可。
+脚本会自动选择最新 Release，下载对应的 Compose 配置，创建 `./wechat-ilink-api`，自动生成并保存 `APP_KEY`，然后拉取公开 GHCR 镜像并启动 API 和管理控制台。
 
 安装完成后：
 
