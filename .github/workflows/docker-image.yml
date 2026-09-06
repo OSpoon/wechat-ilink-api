@@ -15,11 +15,12 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  API_IMAGE_NAME: ${{ github.repository }}
+  ADMIN_IMAGE_NAME: ${{ github.repository }}-admin
 
 jobs:
   publish:
-    name: Build and publish image
+    name: Build and publish images
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -35,10 +36,21 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
-        id: meta
+        id: meta_api
         uses: docker/metadata-action@v6
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+
+      - name: Extract admin Docker metadata
+        id: meta_admin
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ADMIN_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -48,16 +60,27 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build and push Docker image
+      - name: Build and push API image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ steps.meta_api.outputs.tags }}
+          labels: ${{ steps.meta_api.outputs.labels }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push admin image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./admin/Dockerfile
+          push: true
+          tags: ${{ steps.meta_admin.outputs.tags }}
+          labels: ${{ steps.meta_admin.outputs.labels }}
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,mode=max,scope=admin
 
       - name: Create GitHub Release
         env:

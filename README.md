@@ -84,7 +84,30 @@ openssl rand -base64 32
 docker compose up -d --build
 ```
 
-管理控制台地址为 <http://localhost:8080>，访问 <http://localhost:13333/docs> 查看 Swagger。SQLite 数据库持久化在项目目录的 data/db.sqlite3，出站媒体持久化在 data/media，删除容器不会删除这些文件。
+默认情况下，Compose 使用本地 Dockerfile 构建 `api` 和 `admin` 两个镜像。使用 GitHub Container Registry 中已发布的镜像时，可以跳过构建并执行：
+
+生产部署请参阅下面的“使用已发布镜像部署”小节，下载只包含 `image` 配置的 Compose 文件。
+
+管理控制台地址为 <http://localhost:18080>，访问 <http://localhost:13333/docs> 查看 Swagger。SQLite 数据库持久化在项目目录的 data/db.sqlite3，出站媒体持久化在 data/media，删除容器不会删除这些文件。
+
+### 使用已发布镜像部署
+
+生产环境可以直接下载指定版本的 Compose 配置，不需要克隆源代码或在本地构建镜像：
+
+```bash
+VERSION=v0.0.1-beta.2
+mkdir -p wechat-ilink-api && cd wechat-ilink-api
+wget -O docker-compose.yml "https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/${VERSION}/docker-compose.ghcr.yml"
+wget -O .env.example "https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/${VERSION}/.env.example"
+cp .env.example .env
+# 设置 .env 中的 APP_KEY
+mkdir -p data/media
+docker login ghcr.io
+IMAGE_TAG="${VERSION#v}" docker compose pull
+IMAGE_TAG="${VERSION#v}" docker compose up -d
+```
+
+该方式使用 API 和 admin 两个 GHCR 镜像，并将管理控制台暴露在 `18080` 端口。私有镜像需要登录 GHCR 的账号具备 `read:packages` 权限。
 
 查看日志和停止服务：
 

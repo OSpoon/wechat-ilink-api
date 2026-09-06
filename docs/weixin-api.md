@@ -190,4 +190,19 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+生产环境可以下载指定版本的远程镜像 Compose 配置：
+
+```bash
+VERSION=v0.0.1-beta.2
+mkdir -p wechat-ilink-api && cd wechat-ilink-api
+wget -O docker-compose.yml "https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/${VERSION}/docker-compose.ghcr.yml"
+wget -O .env.example "https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/${VERSION}/.env.example"
+cp .env.example .env
+# 设置 .env 中的 APP_KEY
+mkdir -p data/media
+docker login ghcr.io
+IMAGE_TAG="${VERSION#v}" docker compose pull
+IMAGE_TAG="${VERSION#v}" docker compose up -d
+```
+
 部署、备份和故障排查请参阅 [README](../README.md)。

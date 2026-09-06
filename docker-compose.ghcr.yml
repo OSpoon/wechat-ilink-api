@@ -1,8 +1,6 @@
 services:
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${API_IMAGE:-ghcr.io/ospoon/wechat-ilink-api}:${IMAGE_TAG:-latest}
     env_file:
       - .env
     environment:
@@ -16,9 +14,7 @@ services:
     ports:
       - '13333:13333'
     volumes:
-      # SQLite 数据库持久化到项目目录：./data/db.sqlite3
       - ./data:/app/data
-      # 出站媒体文件持久化到项目目录：./data/media
       - ./data/media:/app/data/media
     init: true
     restart: unless-stopped
@@ -37,9 +33,7 @@ services:
       retries: 3
 
   admin:
-    build:
-      context: .
-      dockerfile: admin/Dockerfile
+    image: ${ADMIN_IMAGE:-ghcr.io/ospoon/wechat-ilink-api-admin}:${IMAGE_TAG:-latest}
     depends_on:
       api:
         condition: service_healthy

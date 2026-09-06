@@ -119,7 +119,10 @@ onBeforeUnmount(stopPolling)
 </script>
 
 <template>
-  <PageHeader title="绑定微信账号" description="使用微信扫描二维码，将新的微信连接加入当前 API 用户。">
+  <PageHeader
+    title="绑定微信账号"
+    description="使用微信扫描二维码，将新的微信连接加入当前 API 用户。"
+  >
     <template #actions>
       <ElButton :icon="ArrowLeft" @click="leave">返回账号列表</ElButton>
       <ElButton :icon="Refresh" :loading="loading" @click="createSession">重新生成</ElButton>
@@ -131,13 +134,17 @@ onBeforeUnmount(stopPolling)
       <template v-if="session">
         <StatusTag :status="session.status" />
         <h2 class="qr-page-title">
-          {{ session.status === 'need_verifycode' ? '请输入微信上显示的验证码' : '请使用微信扫描二维码' }}
+          {{
+            session.status === 'need_verifycode'
+              ? '请输入微信上显示的验证码'
+              : '请使用微信扫描二维码'
+          }}
         </h2>
-        <p class="qr-page-subtitle">
-          二维码有效期以微信页面为准，页面会自动更新登录状态。
-        </p>
+        <p class="qr-page-subtitle">二维码有效期以微信页面为准，页面会自动更新登录状态。</p>
         <div v-if="!isTerminal && qrLink" class="qr-link-panel">
-          <div class="qr-link-icon"><ElIcon><Link /></ElIcon></div>
+          <div class="qr-link-icon">
+            <ElIcon><Link /></ElIcon>
+          </div>
           <strong>正在打开微信扫码页面</strong>
           <p>微信提供的登录链接会在当前页面打开。完成扫码后返回此页面查看绑定结果。</p>
           <div class="qr-link-value">{{ qrLink }}</div>
@@ -168,7 +175,10 @@ onBeforeUnmount(stopPolling)
       </template>
       <ElEmpty v-else description="正在创建登录会话…" />
     </div>
-    <div v-if="session?.status === 'confirmed' || session?.status === 'already_connected'" class="bind-footer">
+    <div
+      v-if="session?.status === 'confirmed' || session?.status === 'already_connected'"
+      class="bind-footer"
+    >
       <ElButton type="primary" @click="router.push('/accounts')">查看微信账号</ElButton>
     </div>
   </ElCard>

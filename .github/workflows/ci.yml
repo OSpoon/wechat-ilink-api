@@ -19,7 +19,7 @@ jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -48,8 +48,22 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Typecheck admin
+        run: pnpm typecheck:admin
+
       - name: Test
         run: pnpm test
 
       - name: Build
         run: pnpm build
+
+      - name: Build admin
+        run: pnpm build:admin
+
+      - name: Prepare Compose environment
+        run: cp .env.example .env
+
+      - name: Validate Compose files
+        run: |
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.ghcr.yml config --quiet

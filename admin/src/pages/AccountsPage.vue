@@ -64,9 +64,7 @@ async function toggle(account: (typeof accounts.value)[number]) {
     <template #actions
       ><ElButton :icon="Refresh" :loading="query.isFetching.value" @click="query.refetch"
         >刷新</ElButton
-      ><ElButton type="primary" :icon="Plus" @click="openBindPage"
-        >绑定微信账号</ElButton
-      ></template
+      ><ElButton type="primary" :icon="Plus" @click="openBindPage">绑定微信账号</ElButton></template
     >
   </PageHeader>
   <ElCard class="panel-card" shadow="never">

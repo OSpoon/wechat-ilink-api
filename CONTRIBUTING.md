@@ -23,7 +23,7 @@ pnpm exec simple-git-hooks
 提交前 Git hooks 会自动执行：
 
 - `pre-commit`：使用 `lint-staged` 对暂存的 JavaScript/TypeScript、JSON、Markdown 和 YAML 文件执行格式化和 Lint。
-- `pre-push`：执行 `pnpm check`，检查格式、ESLint 和 TypeScript 类型。
+- `pre-push`：执行 `pnpm check && pnpm typecheck:admin`，检查格式、ESLint、后端 TypeScript 类型和 admin TypeScript 类型。
 
 手动执行完整检查：
 
@@ -54,7 +54,9 @@ pnpm verify
 
 ### Docker 镜像与 GitHub Release
 
-[`.github/workflows/docker-image.yml`](./.github/workflows/docker-image.yml) 监听 `vX.Y.Z` 格式的 tag。镜像成功推送到 GitHub Container Registry 后，Workflow 才会创建对应的 GitHub Release，并自动生成变更说明。
+[`.github/workflows/docker-image.yml`](./.github/workflows/docker-image.yml) 监听 `vX.Y.Z` 格式的 tag，并将 API 与 admin 两个镜像推送到 GitHub Container Registry。两个镜像成功推送后，Workflow 才会创建对应的 GitHub Release，并自动生成变更说明。
+
+生产部署可以下载对应版本的 [`docker-compose.ghcr.yml`](./docker-compose.ghcr.yml) 后直接使用已发布镜像；本地开发和验收继续使用 [`docker-compose.yml`](./docker-compose.yml) 进行构建。
 
 ## 发布
 

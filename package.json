@@ -100,12 +100,15 @@
   "prettier": "@adonisjs/prettier-config",
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged",
-    "pre-push": "pnpm check"
+    "pre-push": "pnpm check && pnpm typecheck:admin"
   },
   "lint-staged": {
     "*.{js,ts,mjs,cjs}": [
       "prettier --write",
       "eslint --fix"
+    ],
+    "*.{vue,css}": [
+      "prettier --write"
     ],
     "*.{json,jsonc,md,yml,yaml}": [
       "prettier --write"
