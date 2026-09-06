@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
     plugins: [vue()],
     base: env.VITE_BASE_PATH || '/',
     server: {
-      port: 15173,
+      port: 18080,
       watch: {
         // Native fs.watch can hit EMFILE on macOS and mounted/container filesystems.
         usePolling: true,

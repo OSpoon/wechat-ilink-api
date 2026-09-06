@@ -72,6 +72,8 @@ pnpm dev:admin
 
 开发环境的 `.env` 需要设置 `APP_KEY`；可以执行 `openssl rand -hex 32` 生成。生产环境请使用上面的一键部署脚本。
 
+本地管理控制台地址同样是 <http://localhost:18080>。
+
 ## 五分钟完成首次对接
 
 下面只使用最常用的几个接口。假设服务运行在 http://localhost:13333。
