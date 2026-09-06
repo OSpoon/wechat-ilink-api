@@ -106,7 +106,16 @@ export default defineConfig({
   | the production build.
   |
   */
-  metaFiles: [],
+  metaFiles: [
+    {
+      pattern: 'database/migrations/**/*.ts',
+      reloadServer: false,
+    },
+    {
+      pattern: 'database/schema_rules.ts',
+      reloadServer: false,
+    },
+  ],
 
   hooks: {
     init: [
