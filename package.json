@@ -1,6 +1,6 @@
 {
   "name": "wechat-ilink-api",
-  "version": "0.0.1-beta.5",
+  "version": "0.0.1-beta.6",
   "private": true,
   "packageManager": "pnpm@10.15.1",
   "type": "module",
