@@ -8,7 +8,7 @@
 
 - 为一个或多个微信账号创建二维码登录会话。
 - 发送和接收文本、图片、视频、文件。
-- 查询消息历史，并下载入站消息中的媒体。
+- 查询消息历史，并下载消息中的媒体。
 - 通过 Webhook 实时接收入站消息。
 - 管理账号状态、暂停或恢复账号。
 - 使用 Swagger UI 在线查看并调试接口。
@@ -60,11 +60,14 @@ openssl rand -base64 32
 ```bash
 node ace.js migration:run
 pnpm dev
+# 另开一个终端启动管理控制台
+pnpm dev:admin
 ```
 
 服务默认地址为：
 
 - API：<http://localhost:13333>
+- 管理控制台（本地开发）：<http://localhost:15173>
 - Swagger UI：<http://localhost:13333/docs>
 - OpenAPI JSON：<http://localhost:13333/openapi.json>
 - 存活检查：<http://localhost:13333/health/live>
@@ -81,7 +84,7 @@ openssl rand -base64 32
 docker compose up -d --build
 ```
 
-访问 <http://localhost:13333/docs> 查看 Swagger。SQLite 数据库持久化在项目目录的 data/db.sqlite3，删除容器不会删除该文件。
+管理控制台地址为 <http://localhost:8080>，访问 <http://localhost:13333/docs> 查看 Swagger。SQLite 数据库持久化在项目目录的 data/db.sqlite3，出站媒体持久化在 data/media，删除容器不会删除这些文件。
 
 查看日志和停止服务：
 
@@ -529,9 +532,9 @@ limit 范围为 1 到 100。响应中的消息通常包含：
 }
 ```
 
-### 下载入站媒体
+### 下载消息媒体
 
-当消息的 media 中存在 itemIndex 和 url 时：
+当消息的 media 中存在 itemIndex 和 url 时，可下载入站或出站消息中的媒体：
 
 ```bash
 curl "$API_URL/api/v1/weixin/accounts/$ACCOUNT_ID/messages/$MESSAGE_ID/media/0" \
@@ -539,7 +542,7 @@ curl "$API_URL/api/v1/weixin/accounts/$ACCOUNT_ID/messages/$MESSAGE_ID/media/0" 
   -o received-media.bin
 ```
 
-接口返回原始媒体二进制内容。根据响应的 Content-Type 或文件内容保存为合适的扩展名。
+接收媒体从微信 CDN 下载并解密后返回二进制内容；发送媒体使用 API 服务保存的本地副本返回。出站媒体不会再次请求微信 CDN，因为微信当前返回的出站下载参数无法用于下载。根据响应的 Content-Type 或文件内容保存为合适的扩展名。
 
 ### 配置 Webhook
 
@@ -693,6 +696,8 @@ curl "$API_URL/api/v1/weixin/webhooks/$WEBHOOK_ID/deliveries" \
 | MEDIA_FILE_INVALID        | 文件格式或大小不符合要求                        |
 | MESSAGE_NOT_FOUND         | 消息不存在                                      |
 | MEDIA_ITEM_NOT_FOUND      | 消息中不存在指定媒体项                          |
+| LOCAL_MEDIA_UNAVAILABLE   | 出站媒体没有可用的本地副本                      |
+| LOCAL_MEDIA_READ_FAILED   | 出站媒体本地文件读取失败                        |
 | WEBHOOK_NOT_FOUND         | Webhook 不存在或不属于当前用户                  |
 | INVALID_WEBHOOK_URL       | Webhook URL 不是有效的 HTTPS 地址               |
 
@@ -711,6 +716,7 @@ curl "$API_URL/api/v1/weixin/webhooks/$WEBHOOK_ID/deliveries" \
 | APP_KEY                      | 服务加密密钥，必须长期保存            |
 | APP_URL                      | 服务对外访问地址                      |
 | DB_DATABASE                  | SQLite 文件路径，默认 data/db.sqlite3 |
+| MEDIA_STORAGE_PATH           | 出站媒体存储目录，默认 data/media     |
 | DEFAULT_TEST_ACCOUNT_ENABLED | 是否创建开发测试账号                  |
 
 不要将 .env、APP_KEY、SQLite 数据库文件提交到代码仓库或公开日志中。
@@ -721,6 +727,7 @@ curl "$API_URL/api/v1/weixin/webhooks/$WEBHOOK_ID/deliveries" \
 单机部署至少备份以下内容：
 
 - data/db.sqlite3
+- data/media/
 - .env 中的 APP_KEY
 - Webhook secret
 
@@ -845,7 +852,7 @@ curl http://localhost:13333/health/ready
 | GET    | /api/v1/weixin/accounts/:accountId/messages                             | 查询消息历史       |
 | POST   | /api/v1/weixin/accounts/:accountId/messages                             | 发送文本           |
 | POST   | /api/v1/weixin/accounts/:accountId/messages/media                       | 发送媒体           |
-| GET    | /api/v1/weixin/accounts/:accountId/messages/:messageId/media/:itemIndex | 下载入站媒体       |
+| GET    | /api/v1/weixin/accounts/:accountId/messages/:messageId/media/:itemIndex | 下载消息媒体       |
 | POST   | /api/v1/weixin/accounts/:accountId/typing                               | 发送或取消输入状态 |
 
 ### Webhook 接口

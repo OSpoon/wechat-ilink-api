@@ -4,7 +4,13 @@ import os from 'node:os'
 import path from 'node:path'
 import { test } from '@japa/runner'
 import { aesEcbPaddedSize, encryptAesEcb, uploadAndSendMedia } from '#services/weixin/media_service'
-import { downloadInboundMedia } from '#services/weixin/media_download_service'
+import { downloadMedia } from '#services/weixin/media_download_service'
+import {
+  attachLocalMediaReference,
+  localMediaReference,
+  readLocalMedia,
+  storeOutboundMedia,
+} from '#services/weixin/local_media_service'
 import { signWebhookPayload, webhookRetryDelayMs } from '#services/weixin/webhook_service'
 import { sanitizeProtocolPayload } from '#services/weixin/payload_sanitizer'
 import {
@@ -211,7 +217,7 @@ test('downloads and decrypts inbound CDN media', async ({ assert }) => {
   }) as typeof fetch
 
   try {
-    const result = await downloadInboundMedia({
+    const result = await downloadMedia({
       cdnBaseUrl: 'https://cdn.example/c2c',
       item: {
         type: 4,
@@ -247,7 +253,7 @@ test('downloads media when inbound aes_key is base64-encoded ASCII hex', async (
     })) as typeof fetch
 
   try {
-    const result = await downloadInboundMedia({
+    const result = await downloadMedia({
       cdnBaseUrl: 'https://cdn.example/c2c',
       item: {
         type: 2,
@@ -264,5 +270,109 @@ test('downloads media when inbound aes_key is base64-encoded ASCII hex', async (
     assert.equal(result.fileName, 'weixin-media-2')
   } finally {
     globalThis.fetch = originalFetch
+  }
+})
+
+test('outbound media uses the canonical CDN URL instead of a derived full_url', async ({
+  assert,
+}) => {
+  const plaintext = Buffer.from('outbound image')
+  const key = Buffer.alloc(16, 5)
+  const ciphertext = encryptAesEcb(plaintext, key)
+  const originalFetch = globalThis.fetch
+  let requestedUrl = ''
+  globalThis.fetch = (async (input) => {
+    requestedUrl = String(input)
+    return new Response(ciphertext, { status: 200 })
+  }) as typeof fetch
+
+  try {
+    const result = await downloadMedia({
+      cdnBaseUrl: 'https://cdn.example/c2c',
+      preferFullUrl: false,
+      item: {
+        type: 2,
+        image_item: {
+          media: {
+            encrypt_query_param: 'outbound-param',
+            full_url: 'https://invalid.example/derived-download',
+            aes_key: key.toString('base64'),
+          },
+        },
+      },
+    })
+    assert.equal(
+      requestedUrl,
+      'https://cdn.example/c2c/download?encrypted_query_param=outbound-param'
+    )
+    assert.deepEqual(result.buffer, plaintext)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('CDN query parameters use the provider-compatible URI encoding', async ({ assert }) => {
+  const key = Buffer.alloc(16, 6)
+  const ciphertext = encryptAesEcb(Buffer.from('encoded query'), key)
+  const originalFetch = globalThis.fetch
+  let requestedUrl = ''
+  globalThis.fetch = (async (input) => {
+    requestedUrl = String(input)
+    return new Response(ciphertext, { status: 200 })
+  }) as typeof fetch
+
+  try {
+    await downloadMedia({
+      cdnBaseUrl: 'https://cdn.example/c2c/',
+      item: {
+        type: 2,
+        image_item: {
+          media: {
+            encrypt_query_param: 'query+with/~marker=',
+            aes_key: key.toString('base64'),
+          },
+        },
+      },
+    })
+    assert.equal(
+      requestedUrl,
+      'https://cdn.example/c2c/download?encrypted_query_param=query%2Bwith%2F~marker%3D'
+    )
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('outbound media is persisted locally and can be read without CDN access', async ({
+  assert,
+}) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'wechat-ilink-api-'))
+  const filePath = path.join(directory, 'photo.png')
+  const plaintext = Buffer.from('local outbound media')
+  await writeFile(filePath, plaintext)
+
+  try {
+    const reference = await storeOutboundMedia({
+      accountId: 'wxacc_test',
+      messageId: 'wxmsg_test',
+      itemIndex: 0,
+      filePath,
+      fileName: 'photo.png',
+      contentType: 'image/png',
+      size: plaintext.length,
+    })
+    const storedItem = attachLocalMediaReference({ type: 2, image_item: { media: {} } }, reference)
+
+    assert.deepEqual(localMediaReference(storedItem), reference)
+    const result = await readLocalMedia(reference)
+    assert.deepEqual(result.buffer, plaintext)
+    assert.equal(result.contentType, 'image/png')
+    assert.equal(result.fileName, 'photo.png')
+  } finally {
+    await rm(path.join(process.cwd(), 'data', 'media', 'outbound', 'wxacc_test'), {
+      recursive: true,
+      force: true,
+    })
+    await rm(directory, { recursive: true, force: true })
   }
 })

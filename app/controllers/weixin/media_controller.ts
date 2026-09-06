@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { stat as statFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
@@ -10,6 +11,11 @@ import { decryptSecret } from '#services/weixin/secret_service'
 import WeixinConversation from '#models/weixin_conversation'
 import { sendMediaMessageValidator } from '#validators/weixin'
 import { encodeMessagePayload } from '#services/weixin/message_payload_service'
+import {
+  attachLocalMediaReference,
+  removeLocalMedia,
+  storeOutboundMedia,
+} from '#services/weixin/local_media_service'
 import { ApiBody, ApiOperation, ApiResponse, ApiSecurity } from '@foadonis/openapi/decorators'
 import {
   ErrorResponseDocument,
@@ -83,6 +89,18 @@ export default class WeixinMediaController {
 
     const clientMessageId = payload.clientMessageId || randomUUID()
     const client = new ILinkClient({ baseUrl: account.baseUrl, token: accountToken(account) })
+    const messageId = `wxmsg_${randomUUID()}`
+    const localFileName = path.basename(file.clientName || 'file')
+    const localFileStats = await statFile(file.tmpPath)
+    const localMedia = await storeOutboundMedia({
+      accountId: account.id,
+      messageId,
+      itemIndex: 0,
+      filePath: file.tmpPath,
+      fileName: localFileName,
+      contentType: mediaContentType(localFileName, payload.mediaType, file),
+      size: localFileStats.size,
+    })
     let sent
     try {
       sent = await uploadAndSendMedia({
@@ -98,6 +116,7 @@ export default class WeixinMediaController {
         runId: payload.runId,
       })
     } catch (error) {
+      await removeLocalMedia(localMedia).catch(() => undefined)
       await WeixinMessage.create({
         id: `wxmsg_${randomUUID()}`,
         accountId: account.id,
@@ -119,8 +138,9 @@ export default class WeixinMediaController {
       throw error
     }
 
+    const storedItem = attachLocalMediaReference(sent.item, localMedia)
     const message = await WeixinMessage.create({
-      id: `wxmsg_${randomUUID()}`,
+      id: messageId,
       accountId: account.id,
       providerMessageId: null,
       providerSeq: null,
@@ -134,6 +154,7 @@ export default class WeixinMediaController {
         caption: payload.caption ?? null,
         rawSize: sent.rawSize,
         ciphertextSize: sent.ciphertextSize,
+        item_list: [storedItem],
         contextToken: Boolean(contextToken),
         runId: payload.runId ?? null,
       }),
@@ -152,4 +173,30 @@ export default class WeixinMediaController {
       })
     )
   }
+}
+
+function mediaContentType(fileName: string, mediaType: string, file: unknown) {
+  const uploadedType = (file as { type?: unknown }).type
+  if (typeof uploadedType === 'string' && uploadedType.trim()) return uploadedType
+
+  const extension = path.extname(fileName).toLowerCase()
+  const knownTypes: Record<string, string> = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+    '.mp4': 'video/mp4',
+    '.webm': 'video/webm',
+    '.mov': 'video/quicktime',
+  }
+  return (
+    knownTypes[extension] ||
+    (mediaType === 'image'
+      ? 'image/jpeg'
+      : mediaType === 'video'
+        ? 'video/mp4'
+        : 'application/octet-stream')
+  )
 }

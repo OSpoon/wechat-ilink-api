@@ -55,7 +55,7 @@ export default class WeixinMessagesController {
         const rawPayload = decodeMessagePayload<{ item_list?: unknown[] }>(message.payload)
         const payload = sanitizeProtocolPayload(rawPayload) as { item_list?: unknown[] }
         const media = (rawPayload.item_list ?? []).flatMap((item, index) => {
-          if (!isMediaItem(item)) return []
+          if (!isMediaItem(item, message.direction)) return []
           return [
             {
               itemIndex: index,
@@ -172,8 +172,45 @@ export default class WeixinMessagesController {
   }
 }
 
-function isMediaItem(value: unknown): value is { type?: number } {
+function isMediaItem(
+  value: unknown,
+  direction: 'inbound' | 'outbound'
+): value is { type?: number } {
   if (!value || typeof value !== 'object') return false
-  const type = (value as { type?: unknown }).type
-  return type === 2 || type === 3 || type === 4 || type === 5
+  const item = value as {
+    type?: unknown
+    image_item?: { media?: unknown }
+    voice_item?: { media?: unknown }
+    file_item?: { media?: unknown }
+    video_item?: { media?: unknown }
+  }
+  const type = String(item.type ?? '').toLowerCase()
+  const typedMedia =
+    type === '2' || type === 'image' || type === 'picture'
+      ? item.image_item
+      : type === '3' || type === 'voice' || type === 'audio'
+        ? item.voice_item
+        : type === '4' || type === 'file' || type === 'document'
+          ? item.file_item
+          : type === '5' || type === 'video'
+            ? item.video_item
+            : item.image_item || item.voice_item || item.file_item || item.video_item
+  const media = typedMedia?.media
+  if (!media || typeof media !== 'object') return false
+  const reference = media as {
+    full_url?: unknown
+    encrypt_query_param?: unknown
+    local_storage_key?: unknown
+  }
+  if (direction === 'outbound') {
+    return (
+      typeof reference.local_storage_key === 'string' &&
+      reference.local_storage_key.trim().length > 0
+    )
+  }
+  return Boolean(
+    (typeof reference.full_url === 'string' && reference.full_url.trim()) ||
+    (typeof reference.encrypt_query_param === 'string' && reference.encrypt_query_param.trim()) ||
+    (typeof reference.local_storage_key === 'string' && reference.local_storage_key.trim())
+  )
 }

@@ -10,32 +10,49 @@ type MediaReference = {
 }
 
 type MediaItem = {
+  type?: unknown
   media?: MediaReference
   aeskey?: unknown
   file_name?: unknown
 }
 
-export async function downloadInboundMedia(params: {
+export async function downloadMedia(params: {
   item: ILinkMessageItem
   cdnBaseUrl: string
   timeoutMs?: number
+  /** Use a provider-supplied full_url only for inbound media references. */
+  preferFullUrl?: boolean
 }) {
   const { media, itemData, fileName, contentType } = extractMedia(params.item)
-  const fullUrl = typeof media.full_url === 'string' ? media.full_url.trim() : ''
+  const fullUrl =
+    params.preferFullUrl !== false && typeof media.full_url === 'string'
+      ? media.full_url.trim()
+      : ''
   const queryParam =
     typeof media.encrypt_query_param === 'string' ? media.encrypt_query_param.trim() : ''
   const url = fullUrl || buildDownloadUrl(params.cdnBaseUrl, queryParam)
-  if (!url) throw new Error('inbound media download reference is missing')
+  if (!url) throw new Error('media download reference is missing')
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), params.timeoutMs ?? 15_000)
   try {
     const response = await fetch(url, { signal: controller.signal })
-    if (!response.ok) throw new Error(`CDN download failed with HTTP ${response.status}`)
+    if (!response.ok) {
+      const body = await response.text().catch(() => '')
+      const errorCode = response.headers.get('x-error-code')?.trim()
+      const errorMessage = response.headers.get('x-error-message')?.trim()
+      const detail = errorMessage || body.trim()
+      const suffix = [errorCode && `code=${errorCode}`, detail && detail.slice(0, 256)]
+        .filter(Boolean)
+        .join(', ')
+      throw new Error(
+        `CDN download failed with HTTP ${response.status}${suffix ? ` (${suffix})` : ''}`
+      )
+    }
     const contentLength = Number(response.headers.get('content-length') || 0)
-    if (contentLength > MAX_MEDIA_BYTES) throw new Error('inbound media exceeds 100MB limit')
+    if (contentLength > MAX_MEDIA_BYTES) throw new Error('media exceeds 100MB limit')
     const downloaded = Buffer.from(await response.arrayBuffer())
-    if (downloaded.length > MAX_MEDIA_BYTES) throw new Error('inbound media exceeds 100MB limit')
+    if (downloaded.length > MAX_MEDIA_BYTES) throw new Error('media exceeds 100MB limit')
 
     const aesKey = resolveAesKey(itemData)
     const buffer = aesKey ? decryptAesEcb(downloaded, aesKey) : downloaded
@@ -51,7 +68,7 @@ export async function downloadInboundMedia(params: {
 }
 
 function extractMedia(item: ILinkMessageItem) {
-  const type = item.type
+  const type = mediaItemType(item)
   const itemData =
     type === 2
       ? (item.image_item as MediaItem | undefined)
@@ -82,6 +99,19 @@ function extractMedia(item: ILinkMessageItem) {
   }
 }
 
+function mediaItemType(item: ILinkMessageItem) {
+  const type = String(item.type ?? '').toLowerCase()
+  if (type === '2' || type === 'image' || type === 'picture') return 2
+  if (type === '3' || type === 'voice' || type === 'audio') return 3
+  if (type === '4' || type === 'file' || type === 'document') return 4
+  if (type === '5' || type === 'video') return 5
+  if (item.image_item) return 2
+  if (item.voice_item) return 3
+  if (item.file_item) return 4
+  if (item.video_item) return 5
+  return 0
+}
+
 function resolveAesKey(item: MediaItem) {
   if (typeof item.aeskey === 'string' && /^[0-9a-fA-F]{32}$/.test(item.aeskey)) {
     return Buffer.from(item.aeskey, 'hex')
@@ -98,10 +128,7 @@ function resolveAesKey(item: MediaItem) {
 
 function buildDownloadUrl(cdnBaseUrl: string, encryptedQueryParam: string) {
   if (!encryptedQueryParam) return ''
-  const base = cdnBaseUrl.endsWith('/') ? cdnBaseUrl : `${cdnBaseUrl}/`
-  const url = new URL('download', base)
-  url.searchParams.set('encrypted_query_param', encryptedQueryParam)
-  return url.toString()
+  return `${cdnBaseUrl.replace(/\/+$/, '')}/download?encrypted_query_param=${encodeURIComponent(encryptedQueryParam)}`
 }
 
 function decryptAesEcb(ciphertext: Buffer, key: Buffer) {

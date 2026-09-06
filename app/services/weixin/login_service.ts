@@ -29,7 +29,7 @@ export async function startLogin(userId: number) {
     status: 'waiting_scan',
     botType,
     pollingBaseUrl: baseUrl,
-    expiresAt: DateTime.utc().plus({ minutes: QR_TTL_MINUTES }),
+    expiresAt: DateTime.local().plus({ minutes: QR_TTL_MINUTES }),
   })
 
   void pollLogin(session.id)
@@ -89,7 +89,7 @@ async function pollLogin(sessionId: string) {
       )
         return
 
-      if (session.expiresAt < DateTime.utc()) {
+      if (session.expiresAt < DateTime.local()) {
         await session.merge({ status: 'expired' }).save()
         return
       }
@@ -100,7 +100,7 @@ async function pollLogin(sessionId: string) {
       try {
         status = await client.getQrCodeStatus(session.qrcode, verifyCode)
       } catch (error) {
-        if (session.expiresAt < DateTime.utc()) {
+        if (session.expiresAt < DateTime.local()) {
           await session.merge({ status: 'expired' }).save()
           return
         }
@@ -186,7 +186,7 @@ async function refreshQr(session: WeixinLoginSession, refreshCount: number) {
         qrcode: qr.qrcode,
         qrcodeUrl: qr.qrcode_img_content,
         status: 'waiting_scan',
-        expiresAt: DateTime.utc().plus({ minutes: QR_TTL_MINUTES }),
+        expiresAt: DateTime.local().plus({ minutes: QR_TTL_MINUTES }),
       })
       .save()
     return true

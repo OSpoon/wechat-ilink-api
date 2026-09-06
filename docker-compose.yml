@@ -11,12 +11,15 @@ services:
       PORT: 13333
       APP_URL: http://localhost:13333
       DB_DATABASE: /app/data/db.sqlite3
+      MEDIA_STORAGE_PATH: /app/data/media
       DEFAULT_TEST_ACCOUNT_ENABLED: 'false'
     ports:
       - '13333:13333'
     volumes:
       # SQLite 数据库持久化到项目目录：./data/db.sqlite3
       - ./data:/app/data
+      # 出站媒体文件持久化到项目目录：./data/media
+      - ./data/media:/app/data/media
     init: true
     restart: unless-stopped
     healthcheck:
@@ -32,3 +35,14 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 3
+
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '8080:80'
+    restart: unless-stopped

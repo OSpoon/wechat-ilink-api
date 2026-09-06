@@ -9,6 +9,7 @@ const sensitiveKeys = new Set([
   'thumb_upload_param',
   'upload_full_url',
   'upload_param',
+  'local_storage_key',
 ])
 
 export function sanitizeProtocolPayload(value: unknown): unknown {

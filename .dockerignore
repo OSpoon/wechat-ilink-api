@@ -1,9 +1,13 @@
 .git
 .github
 node_modules
+admin/node_modules
+admin/dist
 build
+coverage
 tmp
-data
+data/db.sqlite3
+data/media
 .env
 .env.*
 !.env.example

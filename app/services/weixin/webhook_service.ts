@@ -33,7 +33,7 @@ function toPublic(endpoint: WeixinWebhookEndpoint): PublicWebhookEndpoint {
     accountId: endpoint.accountId,
     url: endpoint.url,
     events: JSON.parse(endpoint.events) as WeixinWebhookEvent[],
-    enabled: endpoint.enabled,
+    enabled: Boolean(endpoint.enabled),
     lastDeliveryAt: endpoint.lastDeliveryAt,
     createdAt: endpoint.createdAt,
     updatedAt: endpoint.updatedAt,

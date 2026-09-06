@@ -35,11 +35,9 @@ export function encryptAesEcb(plaintext: Buffer, key: Buffer) {
 }
 
 function buildUploadUrl(cdnBaseUrl: string, uploadParam: string, filekey: string) {
-  const base = cdnBaseUrl.endsWith('/') ? cdnBaseUrl : `${cdnBaseUrl}/`
-  const url = new URL('upload', base)
-  url.searchParams.set('encrypted_query_param', uploadParam)
-  url.searchParams.set('filekey', filekey)
-  return url
+  return new URL(
+    `${cdnBaseUrl.replace(/\/+$/, '')}/upload?encrypted_query_param=${encodeURIComponent(uploadParam)}&filekey=${encodeURIComponent(filekey)}`
+  )
 }
 
 async function uploadEncrypted(
@@ -181,5 +179,6 @@ export async function uploadAndSendMedia(params: {
     fileName: path.basename(params.fileName || params.filePath),
     rawSize: plaintext.length,
     ciphertextSize: uploaded.ciphertextSize,
+    item,
   }
 }
