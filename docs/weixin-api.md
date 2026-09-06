@@ -180,29 +180,10 @@ X-Weixin-Signature: sha256=<hex-signature>
 
 ## 部署提示
 
-每个 HTTP 请求都会输出结构化访问日志到标准输出，包含请求头、查询参数、请求正文、响应头和响应正文。密码、Cookie、Authorization、令牌、secret、签名、二维码地址等敏感字段会自动脱敏；multipart 上传只记录文件名、类型和大小，不记录文件内容。生产环境日志为 JSON，可直接由 Docker 或云日志系统采集；使用 X-Request-Id 可以关联客户端请求和服务端日志。可通过 `REQUEST_LOG_BODY=false` 关闭正文记录，通过 `REQUEST_LOG_MAX_BODY_BYTES` 限制单条正文日志大小。
-
-本项目按单机方式部署，默认端口为 13333，默认时区为 `Asia/Shanghai`（北京时间），SQLite 文件默认为 data/db.sqlite3。Docker Compose 使用根目录 .env 配置，并将 ./data 映射到容器内的数据目录。
+部署、备份和故障排查请参阅 [README 的快速开始和高级部署章节](../README.md)。服务器安装好 Docker 后，推荐执行：
 
 ```bash
-cp .env.example .env
-# 设置 .env 中的 APP_KEY
-docker compose up -d --build
+curl -fsSL https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/main/install.sh | bash
 ```
 
-生产环境可以下载指定版本的远程镜像 Compose 配置：
-
-```bash
-VERSION=v0.0.1-beta.2
-mkdir -p wechat-ilink-api && cd wechat-ilink-api
-wget -O docker-compose.yml "https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/${VERSION}/docker-compose.ghcr.yml"
-wget -O .env.example "https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/${VERSION}/.env.example"
-cp .env.example .env
-# 设置 .env 中的 APP_KEY
-mkdir -p data/media
-docker login ghcr.io
-IMAGE_TAG="${VERSION#v}" docker compose pull
-IMAGE_TAG="${VERSION#v}" docker compose up -d
-```
-
-部署、备份和故障排查请参阅 [README](../README.md)。
+一键脚本会自动生成并保存 `APP_KEY`。每个 HTTP 请求仍会输出结构化访问日志到标准输出；密码、Cookie、Authorization、令牌、secret、签名和二维码地址等敏感字段会自动脱敏。生产环境日志为 JSON，可通过 `REQUEST_LOG_BODY=false` 关闭正文记录。

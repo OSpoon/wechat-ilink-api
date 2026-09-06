@@ -19,104 +19,57 @@
 
 - [快速开始](#快速开始)
 - [五分钟完成首次对接](#五分钟完成首次对接)
-- [核心概念](#核心概念)
-- [业务调用流程](#业务调用流程)
-- [认证](#认证)
-- [微信账号接入](#微信账号接入)
-- [消息收发](#消息收发)
-- [接收入站消息](#接收入站消息)
-- [状态与错误](#状态与错误)
-- [部署](#部署)
-- [日志与问题排查](#日志与问题排查)
-- [故障排查](#故障排查)
-- [接口总览](#接口总览)
+- [API 参考](docs/weixin-api.md)
+- [高级部署与备份](#高级部署与备份)
+- [日志与故障排查](#日志与故障排查)
 
 ## 快速开始
 
-### 运行环境
+### 一键部署（推荐）
 
-- Node.js 24 或更高版本
-- pnpm 10 或更高版本
-- 默认时区为 `Asia/Shanghai`（北京时间）
-- 本地开发不需要单独安装数据库，SQLite 文件由服务管理
-- 运行真实微信对接时，需要能够访问微信 iLink 服务和媒体服务
+服务器安装好 Docker 后，只需要执行一条命令：
 
-### 本地启动
+```bash
+curl -fsSL https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/main/install.sh | bash
+```
+
+脚本会自动选择最新 Release，下载对应的 Compose 配置，创建 `./wechat-ilink-api`，自动生成并保存 `APP_KEY`，然后拉取镜像并启动 API 和管理控制台。默认不需要登录 GHCR；如果你的镜像仓库是私有的，脚本提示后再执行 `docker login ghcr.io` 即可。
+
+安装完成后：
+
+- API：<http://localhost:13333>
+- 管理控制台：<http://localhost:18080>
+- Swagger：<http://localhost:13333/docs>
+
+指定版本或目录时：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/main/install.sh \
+  | bash -s -- --version v0.0.1-beta.2 --dir /opt/wechat-ilink-api
+```
+
+常用运维命令：
+
+```bash
+cd wechat-ilink-api
+docker compose logs -f api  # 查看 API 日志
+docker compose down         # 停止服务
+```
+
+### 本地开发
+
+本地开发需要 Node.js 24、pnpm 10：
 
 ```bash
 corepack enable
-cp .env.example .env
 pnpm install
-```
-
-为 APP_KEY 设置一个稳定的随机值。不要在服务运行后随意更换，否则已保存的登录凭证和 Webhook 密钥将无法继续使用。
-
-```bash
-openssl rand -base64 32
-```
-
-将生成的值填入 .env 的 APP_KEY，然后执行：
-
-```bash
+cp .env.example .env
 node ace.js migration:run
 pnpm dev
-# 另开一个终端启动管理控制台
 pnpm dev:admin
 ```
 
-服务默认地址为：
-
-- API：<http://localhost:13333>
-- 管理控制台（本地开发）：<http://localhost:15173>
-- Swagger UI：<http://localhost:13333/docs>
-- OpenAPI JSON：<http://localhost:13333/openapi.json>
-- 存活检查：<http://localhost:13333/health/live>
-- 就绪检查：<http://localhost:13333/health/ready>
-
-### Docker Compose 启动
-
-项目使用根目录的 .env.example 作为配置模板，不提供单独的 Docker 环境模板。
-
-```bash
-cp .env.example .env
-openssl rand -base64 32
-# 将生成的值填入 .env 的 APP_KEY
-docker compose up -d --build
-```
-
-默认情况下，Compose 使用本地 Dockerfile 构建 `api` 和 `admin` 两个镜像。使用 GitHub Container Registry 中已发布的镜像时，可以跳过构建并执行：
-
-生产部署请参阅下面的“使用已发布镜像部署”小节，下载只包含 `image` 配置的 Compose 文件。
-
-管理控制台地址为 <http://localhost:18080>，访问 <http://localhost:13333/docs> 查看 Swagger。SQLite 数据库持久化在项目目录的 data/db.sqlite3，出站媒体持久化在 data/media，删除容器不会删除这些文件。
-
-### 使用已发布镜像部署
-
-生产环境可以直接下载指定版本的 Compose 配置，不需要克隆源代码或在本地构建镜像：
-
-```bash
-VERSION=v0.0.1-beta.2
-mkdir -p wechat-ilink-api && cd wechat-ilink-api
-wget -O docker-compose.yml "https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/${VERSION}/docker-compose.ghcr.yml"
-wget -O .env.example "https://raw.githubusercontent.com/OSpoon/wechat-ilink-api/${VERSION}/.env.example"
-cp .env.example .env
-# 设置 .env 中的 APP_KEY
-mkdir -p data/media
-docker login ghcr.io
-IMAGE_TAG="${VERSION#v}" docker compose pull
-IMAGE_TAG="${VERSION#v}" docker compose up -d
-```
-
-该方式使用 API 和 admin 两个 GHCR 镜像，并将管理控制台暴露在 `18080` 端口。私有镜像需要登录 GHCR 的账号具备 `read:packages` 权限。
-
-查看日志和停止服务：
-
-```bash
-docker compose logs -f api
-docker compose down
-```
-
-Compose 默认关闭自动创建测试 API 账号，生产环境建议通过注册接口创建正式 API 用户。仅用于本地验收时，可以将 docker-compose.yml 中的 DEFAULT_TEST_ACCOUNT_ENABLED 改为 true 后重新创建容器。
+开发环境的 `.env` 需要设置 `APP_KEY`；可以执行 `openssl rand -hex 32` 生成。生产环境请使用上面的一键部署脚本。
 
 ## 五分钟完成首次对接
 
@@ -726,37 +679,38 @@ curl "$API_URL/api/v1/weixin/webhooks/$WEBHOOK_ID/deliveries" \
 
 遇到 401 时先重新登录获取 access token；遇到 403 或资源不存在时，确认资源是否属于当前 API 用户。
 
-## 部署
+## 高级部署与备份
 
-### 常用配置
+一键脚本已经覆盖大多数单机部署场景。只有需要改端口、绑定域名或使用本地源码构建时，才需要手动编辑 `.env` 或 Compose 文件。
 
-配置模板为 .env.example。通常只需要确认以下配置：
+### 重要配置
 
 | 配置                         | 说明                                  |
 | ---------------------------- | ------------------------------------- |
-| PORT                         | API 服务端口，默认 13333              |
-| HOST                         | 监听地址；容器部署使用 0.0.0.0        |
 | APP_KEY                      | 服务加密密钥，必须长期保存            |
 | APP_URL                      | 服务对外访问地址                      |
+| PORT                         | API 服务端口，默认 13333              |
 | DB_DATABASE                  | SQLite 文件路径，默认 data/db.sqlite3 |
-| MEDIA_STORAGE_PATH           | 出站媒体存储目录，默认 data/media     |
+| MEDIA_STORAGE_PATH           | 出站媒体目录，默认 data/media         |
 | DEFAULT_TEST_ACCOUNT_ENABLED | 是否创建开发测试账号                  |
 
-不要将 .env、APP_KEY、SQLite 数据库文件提交到代码仓库或公开日志中。
-除上述配置外，其他配置通常保持 .env.example 中的默认值。
+通常只需修改 `.env` 中的 `APP_URL` 和端口映射。不要更换已运行服务的 `APP_KEY`，也不要提交 `.env`、数据库文件或 Webhook secret。
+
+### 本地构建镜像
+
+克隆仓库后，可以使用本地 Dockerfile 构建并启动：
+
+```bash
+cp .env.example .env
+openssl rand -hex 32 # 将结果填入 .env 的 APP_KEY
+docker compose up -d --build
+```
 
 ### 数据备份
 
-单机部署至少备份以下内容：
+至少备份 `data/db.sqlite3`、`data/media/`、`.env` 中的 `APP_KEY` 以及业务侧保存的 Webhook secret。`APP_KEY` 与数据库必须成套备份，否则无法恢复已保存的账号连接信息。
 
-- data/db.sqlite3
-- data/media/
-- .env 中的 APP_KEY
-- Webhook secret
-
-APP_KEY 与数据库需要成套备份。只备份数据库而丢失 APP_KEY，无法恢复已保存的账号连接信息。
-
-## 日志与问题排查
+## 日志与故障排查
 
 服务会为每个 HTTP 请求输出一条结构化访问日志，默认写到标准输出。日志服务可以直接采集容器 stdout，不需要读取应用目录中的日志文件。
 
