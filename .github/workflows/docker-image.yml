@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
@@ -82,16 +84,60 @@ jobs:
           cache-from: type=gha,scope=admin
           cache-to: type=gha,mode=max,scope=admin
 
+      - name: Generate changelog from Git history
+        id: git-cliff
+        uses: orhun/git-cliff-action@v4.4.0
+        with:
+          config: cliff.toml
+          args: --verbose
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          OUTPUT: CHANGELOG.generated.md
+          GITHUB_REPO: ${{ github.repository }}
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
+          notes_file="$(mktemp)"
+          trap 'rm -f "$notes_file"' EXIT
+
+          extract_changelog_section() {
+            local heading="$1"
+
+            awk -v heading="$heading" '
+              index($0, heading) == 1 { in_section = 1; next }
+              in_section && /^## / { exit }
+              in_section { print }
+            ' CHANGELOG.generated.md
+          }
+
+          release_notes="$(extract_changelog_section "## [${GITHUB_REF_NAME}]")"
+
           if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "Release ${GITHUB_REF_NAME} already exists; nothing to create."
+            if [[ -n "${release_notes//[[:space:]]/}" ]]; then
+              printf '%s\n' "$release_notes" > "$notes_file"
+              gh release edit "${GITHUB_REF_NAME}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --notes-file "$notes_file"
+              echo "Release ${GITHUB_REF_NAME} notes updated from Git history."
+            else
+              echo "Release ${GITHUB_REF_NAME} already exists; no changelog notes found."
+            fi
           else
-            gh release create "${GITHUB_REF_NAME}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --title "${GITHUB_REF_NAME}" \
-              --generate-notes \
-              --verify-tag
+            if [[ -n "${release_notes//[[:space:]]/}" ]]; then
+              printf '%s\n' "$release_notes" > "$notes_file"
+              gh release create "${GITHUB_REF_NAME}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --title "${GITHUB_REF_NAME}" \
+                --notes-file "$notes_file" \
+                --verify-tag
+            else
+              gh release create "${GITHUB_REF_NAME}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --title "${GITHUB_REF_NAME}" \
+                --generate-notes \
+                --verify-tag
+            fi
           fi

@@ -76,6 +76,8 @@ pnpm release
 
 tag 推送后，Docker workflow 会依次完成镜像构建、镜像推送和 GitHub Release 创建。
 
+每个版本的功能变更由 [`cliff.toml`](./cliff.toml) 根据完整 Git 历史自动归类生成。Docker workflow 会把当前 tag 的生成章节作为 GitHub Release 正文；如果生成器没有找到章节，则回退到 GitHub 原生 Release Notes，避免 Release 为空白。
+
 首次启用发布前，在 GitHub 仓库确认：
 
 - Actions 已启用。
