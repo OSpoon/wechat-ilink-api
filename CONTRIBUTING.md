@@ -23,7 +23,7 @@ pnpm exec simple-git-hooks
 提交前 Git hooks 会自动执行：
 
 - `pre-commit`：使用 `lint-staged` 对暂存的 JavaScript/TypeScript、JSON、Markdown 和 YAML 文件执行格式化和 Lint。
-- `pre-push`：执行 `pnpm check && pnpm typecheck:admin`，检查格式、ESLint、后端 TypeScript 类型和 admin TypeScript 类型。
+- `pre-push`：执行 `pnpm check`，检查格式、ESLint、后端 TypeScript 类型和 admin TypeScript 类型。
 
 手动执行完整检查：
 
@@ -33,7 +33,7 @@ pnpm test
 pnpm build
 ```
 
-也可以执行完整验证命令：
+或者使用一条命令完成全部验证：
 
 ```bash
 pnpm verify

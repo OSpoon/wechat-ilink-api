@@ -39,26 +39,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check formatting
-        run: pnpm format:check
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Typecheck admin
-        run: pnpm typecheck:admin
+      - name: Check code quality
+        run: pnpm check
 
       - name: Test
         run: pnpm test
 
       - name: Build
         run: pnpm build
-
-      - name: Build admin
-        run: pnpm build:admin
 
       - name: Prepare Compose environment
         run: cp .env.example .env

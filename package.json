@@ -11,18 +11,13 @@
   },
   "scripts": {
     "start": "node bin/server.js",
-    "build": "node ace build",
     "dev": "node ace serve --watch --poll",
     "dev:admin": "pnpm --dir admin dev",
-    "build:admin": "pnpm --dir admin build",
-    "typecheck:admin": "pnpm --dir admin typecheck",
+    "build": "node ace build && pnpm --dir admin build",
     "test": "node ace test",
-    "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "typecheck": "tsc --noEmit",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck",
-    "verify": "pnpm check && pnpm typecheck:admin && pnpm test && pnpm build && pnpm build:admin",
+    "check": "prettier --check . && eslint . && tsc --noEmit && pnpm --dir admin typecheck",
+    "verify": "pnpm check && pnpm test && pnpm build",
     "release": "pnpm verify && bumpp --git-check --push",
     "prepare": "simple-git-hooks"
   },
@@ -100,7 +95,7 @@
   "prettier": "@adonisjs/prettier-config",
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged",
-    "pre-push": "pnpm check && pnpm typecheck:admin"
+    "pre-push": "pnpm check"
   },
   "lint-staged": {
     "*.{js,ts,mjs,cjs}": [
