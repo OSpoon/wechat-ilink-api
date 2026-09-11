@@ -16,6 +16,7 @@ const query = useQuery({
   queryKey: ['accounts'],
   queryFn: async () => (await accountsApi.list()).data,
 })
+const pendingActionId = ref<string | null>(null)
 const action = useMutation({
   mutationFn: ({ id, operation }: { id: string; operation: 'start' | 'stop' }) =>
     operation === 'start' ? accountsApi.start(id) : accountsApi.stop(id),
@@ -51,10 +52,13 @@ async function toggle(account: (typeof accounts.value)[number]) {
       type: 'warning',
     })
   try {
+    pendingActionId.value = account.id
     await action.mutateAsync({ id: account.id, operation })
     ElMessage.success(operation === 'start' ? '账号启动请求已提交' : '账号已停止')
   } catch (error) {
     if (error !== 'cancel') ElMessage.error(error instanceof Error ? error.message : '操作失败')
+  } finally {
+    if (pendingActionId.value === account.id) pendingActionId.value = null
   }
 }
 </script>
@@ -121,7 +125,7 @@ async function toggle(account: (typeof accounts.value)[number]) {
             link
             type="warning"
             :icon="VideoPause"
-            :loading="action.isPending.value"
+            :loading="pendingActionId === row.id"
             @click.stop="toggle(row)"
             >停止</ElButton
           ><ElButton
@@ -129,7 +133,7 @@ async function toggle(account: (typeof accounts.value)[number]) {
             link
             type="success"
             :icon="VideoPlay"
-            :loading="action.isPending.value"
+            :loading="pendingActionId === row.id"
             @click.stop="toggle(row)"
             >启动</ElButton
           ></template
