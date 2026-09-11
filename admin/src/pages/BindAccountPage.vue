@@ -159,12 +159,7 @@ onBeforeUnmount(stopPolling)
         </h2>
         <p class="qr-page-subtitle">二维码有效期以微信页面为准，页面会自动更新登录状态。</p>
         <div v-if="!isTerminal && qrLink" class="qr-link-panel qr-code-panel">
-          <img
-            v-if="qrImageUrl"
-            class="qr-page-image"
-            :src="qrImageUrl"
-            alt="微信登录二维码"
-          />
+          <img v-if="qrImageUrl" class="qr-page-image" :src="qrImageUrl" alt="微信登录二维码" />
           <ElSkeleton v-else :rows="8" animated class="qr-image-skeleton" />
           <p>请使用微信扫描二维码，完成扫码后返回此页面查看绑定结果。</p>
           <a class="qr-link-fallback" :href="qrLink" target="_blank" rel="noopener noreferrer">
