@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQueryClient } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Link, Refresh } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
+import QRCode from 'qrcode'
 import { ApiError } from '../api/client'
 import { loginSessionsApi } from '../api/resources'
 import PageHeader from '../components/PageHeader.vue'
@@ -15,7 +16,9 @@ const queryClient = useQueryClient()
 const session = ref<LoginSession | null>(null)
 const verifyCode = ref('')
 const loading = ref(false)
+const qrImageUrl = ref('')
 let timer: number | undefined
+let qrRenderId = 0
 const bindSessionStorageKey = 'wechat-ilink:bind-session-id'
 
 const isTerminal = computed(() =>
@@ -24,6 +27,29 @@ const isTerminal = computed(() =>
   )
 )
 const qrLink = computed(() => session.value?.qrUrl || '')
+
+watch(qrLink, (link) => {
+  const renderId = ++qrRenderId
+  if (!link) {
+    qrImageUrl.value = ''
+    return
+  }
+
+  void QRCode.toDataURL(link, {
+    width: 280,
+    margin: 2,
+    errorCorrectionLevel: 'M',
+  })
+    .then((dataUrl) => {
+      if (renderId === qrRenderId) qrImageUrl.value = dataUrl
+    })
+    .catch(() => {
+      if (renderId === qrRenderId) {
+        qrImageUrl.value = ''
+        ElMessage.error('二维码渲染失败，请稍后重试。')
+      }
+    })
+})
 
 function stopPolling() {
   if (timer) window.clearInterval(timer)
@@ -54,17 +80,11 @@ async function createSession() {
   try {
     session.value = (await loginSessionsApi.create()).data
     sessionStorage.setItem(bindSessionStorageKey, session.value.id)
-    openQrLink()
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '二维码创建失败')
   } finally {
     loading.value = false
   }
-}
-
-function openQrLink() {
-  if (!qrLink.value) return
-  window.location.assign(qrLink.value)
 }
 
 async function restoreSession() {
@@ -81,10 +101,7 @@ async function restoreSession() {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
     }
     if (isTerminal.value) sessionStorage.removeItem(bindSessionStorageKey)
-    else {
-      openQrLink()
-      timer = window.setInterval(refresh, 1000)
-    }
+    else timer = window.setInterval(refresh, 1000)
   } catch {
     sessionStorage.removeItem(bindSessionStorageKey)
     await createSession()
@@ -141,13 +158,18 @@ onBeforeUnmount(stopPolling)
           }}
         </h2>
         <p class="qr-page-subtitle">二维码有效期以微信页面为准，页面会自动更新登录状态。</p>
-        <div v-if="!isTerminal && qrLink" class="qr-link-panel">
-          <div class="qr-link-icon">
-            <ElIcon><Link /></ElIcon>
-          </div>
-          <strong>正在打开微信扫码页面</strong>
-          <p>微信提供的登录链接会在当前页面打开。完成扫码后返回此页面查看绑定结果。</p>
-          <div class="qr-link-value">{{ qrLink }}</div>
+        <div v-if="!isTerminal && qrLink" class="qr-link-panel qr-code-panel">
+          <img
+            v-if="qrImageUrl"
+            class="qr-page-image"
+            :src="qrImageUrl"
+            alt="微信登录二维码"
+          />
+          <ElSkeleton v-else :rows="8" animated class="qr-image-skeleton" />
+          <p>请使用微信扫描二维码，完成扫码后返回此页面查看绑定结果。</p>
+          <a class="qr-link-fallback" :href="qrLink" target="_blank" rel="noopener noreferrer">
+            无法扫码？打开微信登录链接
+          </a>
         </div>
         <ElEmpty v-else-if="!isTerminal" description="正在准备二维码地址…" />
         <div v-if="session.status === 'need_verifycode'" class="verify-row verify-row-page">

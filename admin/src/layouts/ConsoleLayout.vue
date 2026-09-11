@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -38,16 +38,28 @@ const navItems = [
   { path: '/accounts', label: '微信账号', icon: UserFilled },
   { path: '/webhooks', label: 'Webhook', icon: Connection },
 ]
+const sidebarBreakpoint = 980
 
 function toggleSidebar() {
   collapsed.value = !collapsed.value
   localStorage.setItem('wechat-ilink:sidebar-collapsed', String(collapsed.value))
 }
 
+function syncSidebarToViewport() {
+  if (window.innerWidth <= sidebarBreakpoint) {
+    collapsed.value = true
+    return
+  }
+
+  collapsed.value = localStorage.getItem('wechat-ilink:sidebar-collapsed') === 'true'
+}
+
 onMounted(() => {
-  const saved = localStorage.getItem('wechat-ilink:sidebar-collapsed')
-  collapsed.value = saved === null ? window.innerWidth <= 980 : saved === 'true'
+  syncSidebarToViewport()
+  window.addEventListener('resize', syncSidebarToViewport)
 })
+
+onBeforeUnmount(() => window.removeEventListener('resize', syncSidebarToViewport))
 
 async function logout() {
   await auth.logout()
